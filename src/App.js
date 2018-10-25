@@ -1,14 +1,14 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
+import bumo from './Bumo.jpg';
 import './App.css';
 import BumoSDK from 'bumo-sdk';
 import 'bulma/css/bulma.css';
-import { handleFundAccount } from './utils.js'
 
 
 
 const sdk = new BumoSDK({
-  host: '192.168.33.10:36002',
+  //host: '192.168.33.10:36002',
+  host: 'seed1.bumotest.io:26002',
 })
 
 class App extends Component {
@@ -20,7 +20,9 @@ class App extends Component {
       privateKey: null,
       blob: null,
       nonce: null,
-      txHash: null
+      txHash: null,
+      balance: null,
+      assests: [],
     }
 
     this.handleFundAccount = this.handleFundAccount.bind(this);
@@ -54,16 +56,11 @@ class App extends Component {
     });
   }
 
-
-
   handleFundAccount = async (e) => {
-
-
-
 
     const operationInfo = sdk.operation.buSendOperation({
       destAddress: this.state.address,
-      buAmount: '10000000', //write about
+      buAmount: '1000000', //write about
       metadata: '746573742073656e64206275',
     });
 
@@ -177,7 +174,7 @@ class App extends Component {
     const operationItem = operationInfo.result.operation;
 
     console.log(operationItem);
-    
+
     const accountInfo = await sdk.account.getNonce('buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G');
     if (accountInfo.errorCode !== 0) {
       console.log(accountInfo);
@@ -190,7 +187,7 @@ class App extends Component {
     console.log(nonce);
 
     const blobInfo = sdk.transaction.buildBlob({
-      sourceAddress: 'buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G',
+      sourceAddress: this.state.address,
       gasPrice: '10000',
       feeLimit: '500021200000',
       nonce,
@@ -246,6 +243,26 @@ class App extends Component {
 
   }
 
+  handleCheckBalance = async (e) => {
+
+   const address = this.state.address
+    //const address = 'buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G'
+    await sdk.account.getInfo(address).then(data => {
+      console.log(data)
+      var balance = data.result.balance;
+      this.setState({ balance: balance })
+      var assests = data.result.assests;
+      this.setState({ assests: assests })
+    }).catch(err => {
+      console.log(err.message)
+    });
+  }
+
+  handleBuildWebsite = async (e) => {
+    window.location = 'https://explorer.bumotest.io/account/' + this.state.address;
+  }
+
+
 
 
 
@@ -256,7 +273,7 @@ class App extends Component {
       <div className="App">
         <header className="App-header"
         >
-          <img src={logo} className="App-logo" alt="logo" />
+          <img src={bumo} />
           <p>
             Click Button To create private public keys.
           </p>
@@ -288,9 +305,19 @@ class App extends Component {
         </button>
           <button
             className="button is-primary"
+            onClick={() => this.handleCheckBalance()}
+            href='https://explorer.bumotest.io/'
           >
             Check Balance
         </button>
+          <p>balance = {this.state.balance}</p>
+          <p>assests = {this.state.assests}</p>
+          <a onClick={() => this.handleBuildWebsite()} className="button is-primary">
+            View on BlockExplorer
+        </a>
+
+
+
         </header>
       </div>
     );
