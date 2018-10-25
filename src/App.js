@@ -6,6 +6,7 @@ import 'bulma/css/bulma.css';
 import { handleFundAccount } from './utils.js'
 
 
+
 const sdk = new BumoSDK({
   host: 'seed1.bumotest.io:26002',
 })
@@ -22,8 +23,6 @@ class App extends Component {
     }
 
     this.handleFundAccount = this.handleFundAccount.bind(this);
-    this.handleSign = this.handleSign.bind(this);
-    this.handleNonce = this.handleNonce.bind(this);
     this.convertToHex = this.convertToHex.bind(this);
 
   }
@@ -47,21 +46,7 @@ class App extends Component {
     });
   }
 
-  handleNonce = async (e) => {
-    const accountInfo = await sdk.account.getNonce('buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G');
-    if (accountInfo.errorCode !== 0) {
-      console.log(accountInfo);
-      return;
-    }
-    let non = accountInfo.result.nonce;
-    let nonce = parseInt(non.substring(0)) + 1;
 
-    console.log(nonce);
-    this.setState({ nonce: nonce})
-  
-
-  }
-  
 
   handleFundAccount = async (e) => {
 
@@ -71,6 +56,7 @@ class App extends Component {
       host: 'seed1.bumotest.io:26002',
     });
 
+  
 
 
     const operationInfo = sdk.operation.buSendOperation({
@@ -90,8 +76,18 @@ class App extends Component {
 
     console.log(operationItem);
    
-    const nonce = String(this.state.nonce)
+    const accountInfo = await sdk.account.getNonce('buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G');
+    if (accountInfo.errorCode !== 0) {
+      console.log(accountInfo);
+      return;
+    }
+    let non = accountInfo.result.nonce;
+    let nonc = parseInt(non.substring(0)) + 1;
+    let nonce = String(nonc);
+
     console.log(nonce);
+    this.setState({ nonce: nonce})
+  
 
     const blobInfo = sdk.transaction.buildBlob({
       sourceAddress: 'buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G',
@@ -113,25 +109,12 @@ class App extends Component {
 
     const blob = blobInfo.result.transactionBlob;
     console.log(blob);
-    const blobHexFormat = this.convertToHex(blob)
+    const blobHexFormat = await this.convertToHex(blob)
     this.setState({ blob: blobHexFormat })
-
-      
-  
-
-  }
-
-
-
-
-
-  handleSign = async (e) => {
-
-    const blob = this.state.blob
 
     const signatureInfo = sdk.transaction.sign({
       privateKeys: ['privbtEELf99kKzMAPJU17ceYzz5d6y8Y5gbEKc7WySG9NRAEmGibkiG'],
-      blob
+      blob: blobHexFormat,
     });
 
 
@@ -147,7 +130,7 @@ class App extends Component {
 
     try {
       const transactionInfo = await sdk.transaction.submit({
-        blob,
+        blob: blobHexFormat,
         signature: signature,
       })
 
@@ -158,7 +141,14 @@ class App extends Component {
     } catch (e) {
       console.log("Error ", e);
     }
+  
+
   }
+
+
+
+
+
 
   render() {
     return (
@@ -179,30 +169,15 @@ class App extends Component {
             Create Account
         </button>
 
-        <button
-            className="button is-primary"
-            onClick={() => this.handleNonce()}
-          >
-              Get Nonce
-        </button>
-        <p> Current Nonce = {this.state.nonce}</p>
-
+       
           <button
             className="button is-primary"
             onClick={() => this.handleFundAccount()}
           >
-            Preapre to Fund Account With 1 Test BU
-
+            Fund Account
         </button>
           <p>{this.state.blob}</p>
 
-
-          <button
-            className="button is-primary"
-            onClick={() => this.handleSign()}
-          >
-            Fund Account With 1 Test BU
-        </button>
           <button
             className="button is-primary"
           >
