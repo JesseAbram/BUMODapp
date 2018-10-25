@@ -8,7 +8,7 @@ import { handleFundAccount } from './utils.js'
 
 
 const sdk = new BumoSDK({
-  host: 'seed1.bumotest.io:26002',
+  host: '192.168.33.10:36002',
 })
 
 class App extends Component {
@@ -20,14 +20,22 @@ class App extends Component {
       privateKey: null,
       blob: null,
       nonce: null,
+      txHash: null
     }
 
     this.handleFundAccount = this.handleFundAccount.bind(this);
     this.convertToHex = this.convertToHex.bind(this);
+    this.handleCreateAssest = this.handleCreateAssest.bind(this);
+    this.AssestToHex = this.AssestToHex.bind(this);
 
   }
 
   convertToHex = (blob) => {
+    const buffer = blob.split(',').map(e => Number(e))
+    return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
+  }
+
+  AssestToHex = (blob) => {
     const buffer = blob.split(',').map(e => Number(e))
     return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
   }
@@ -38,9 +46,9 @@ class App extends Component {
     sdk.account.create().then(data => {
       console.log(data)
       var address = data.result.address;
-      this.setState({ address: JSON.stringify(address) })
+      this.setState({ address: address })
       var privateKey = data.result.privateKey;
-      this.setState({ privateKey: JSON.stringify(privateKey) })
+      this.setState({ privateKey: privateKey })
     }).catch(err => {
       console.log(err.message)
     });
@@ -50,18 +58,12 @@ class App extends Component {
 
   handleFundAccount = async (e) => {
 
-    const BumoSDK = require('bumo-sdk');
 
-    const sdk = new BumoSDK({
-      host: 'seed1.bumotest.io:26002',
-    });
-
-  
 
 
     const operationInfo = sdk.operation.buSendOperation({
-      destAddress: 'buQnVFqm1LPjPbip5SLBBG6Ke96qmVs4zBw7',
-      buAmount: '100000000', //write about
+      destAddress: this.state.address,
+      buAmount: '10000000', //write about
       metadata: '746573742073656e64206275',
     });
 
@@ -75,7 +77,7 @@ class App extends Component {
     const operationItem = operationInfo.result.operation;
 
     console.log(operationItem);
-   
+
     const accountInfo = await sdk.account.getNonce('buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G');
     if (accountInfo.errorCode !== 0) {
       console.log(accountInfo);
@@ -86,8 +88,7 @@ class App extends Component {
     let nonce = String(nonc);
 
     console.log(nonce);
-    this.setState({ nonce: nonce})
-  
+
 
     const blobInfo = sdk.transaction.buildBlob({
       sourceAddress: 'buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G',
@@ -128,20 +129,120 @@ class App extends Component {
     console.log(signature);
 
 
-    try {
-      const transactionInfo = await sdk.transaction.submit({
-        blob: blobHexFormat,
-        signature: signature,
-      })
 
-      if (transactionInfo.errorCode !== 0) {
-        console.log("Error code not 0 ",transactionInfo);
-      }
-      console.log(transactionInfo);
-    } catch (e) {
-      console.log("Error ", e);
+    const transactionInfo = sdk.transaction.submit({
+      blob: blobHexFormat,
+      signature: signature,
+    }).then(transactionInfo => {
+      console.log(transactionInfo)
+      var txHash = transactionInfo.result.hash;
+      this.setState({ txHash: txHash })
+    }).catch(err => {
+      console.log(err.message)
+    });
+
+
+
+    this.refs.btn2.setAttribute("disabled", "disabled");
+
+
+  }
+
+  handleCreateAssest = async (e) => {
+
+
+    const atp10TokenMetadata = {
+      version: '1.0',
+      name: 'Test',
+      nowSupply: '0',
+      decimals: '1',
+      description: 'testing',
+    };
+
+
+    const operationInfo = sdk.operation.assetIssueOperation({
+      sourceAddress: 'buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G',
+      code: atp10TokenMetadata.name,
+      assetAmount: '10000',
+      metadata: "atp10TokenMetadata",
+    });
+
+
+    if (operationInfo.errorCode !== 0) {
+      console.log(operationInfo);
+      return;
     }
-  
+
+
+    const operationItem = operationInfo.result.operation;
+
+    console.log(operationItem);
+    
+    const accountInfo = await sdk.account.getNonce('buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G');
+    if (accountInfo.errorCode !== 0) {
+      console.log(accountInfo);
+      return;
+    }
+    let non = accountInfo.result.nonce;
+    let nonc = parseInt(non.substring(0)) + 1;
+    let nonce = String(nonc);
+
+    console.log(nonce);
+
+    const blobInfo = sdk.transaction.buildBlob({
+      sourceAddress: 'buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G',
+      gasPrice: '1000',
+      feeLimit: '50002120000',
+      nonce,
+      operations: [operationItem],
+
+
+    });
+
+    console.log(blobInfo.errorCode);
+
+    if (blobInfo.errorCode !== 0) {
+      console.log(blobInfo);
+      return;
+    }
+
+
+    const blob = blobInfo.result.transactionBlob;
+    const AssetHexFormat = await this.convertToHex(blob)
+
+
+    console.log(blob);
+
+    let signatureInfo = sdk.transaction.sign({
+      privateKeys: ['privbtEELf99kKzMAPJU17ceYzz5d6y8Y5gbEKc7WySG9NRAEmGibkiG'],
+      blob: AssetHexFormat,
+    });
+
+
+    if (signatureInfo.errorCode !== 0) {
+      console.log(signatureInfo);
+      return;
+    }
+
+    const signature = signatureInfo.result.signatures;
+
+    console.log(signature);
+
+
+
+    const transactionInfo = sdk.transaction.submit({
+      blob: AssetHexFormat,
+      signature: signature,
+    }).then(info => {
+      console.log(info);
+    }).catch(err => {
+      console.log(err.message);
+    });
+
+
+    if (transactionInfo.errorCode !== 0) {
+      console.log(transactionInfo);
+    }
 
   }
 
@@ -154,7 +255,7 @@ class App extends Component {
     return (
       <div className="App">
         <header className="App-header"
-       >
+        >
           <img src={logo} className="App-logo" alt="logo" />
           <p>
             Click Button To create private public keys.
@@ -169,17 +270,19 @@ class App extends Component {
             Create Account
         </button>
 
-       
-          <button
-            className="button is-primary"
-            onClick={() => this.handleFundAccount()}
-          >
-            Fund Account
-        </button>
-          <p>{this.state.blob}</p>
 
           <button
             className="button is-primary"
+            onClick={() => this.handleFundAccount()}
+            ref="btn2"
+          >
+            Fund Account
+        </button>
+          <p>{this.state.transactionInfo}</p>
+
+          <button
+            className="button is-primary"
+            onClick={() => this.handleCreateAssest()}
           >
             Create Assest
         </button>
