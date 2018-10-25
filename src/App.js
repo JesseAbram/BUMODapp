@@ -191,8 +191,8 @@ class App extends Component {
 
     const blobInfo = sdk.transaction.buildBlob({
       sourceAddress: 'buQgvdDfUjmK56K73ba8kqnE1d8azzCRYM9G',
-      gasPrice: '1000',
-      feeLimit: '50002120000',
+      gasPrice: '10000',
+      feeLimit: '500021200000',
       nonce,
       operations: [operationItem],
 
